@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.location.Location
 import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -18,6 +19,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.example.ocean_android_gps.databinding.ActivityMapsBinding
 import com.google.android.gms.maps.model.CircleOptions
+import com.google.android.libraries.places.api.Places
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -61,6 +63,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun iniciarLocalizacao() {
+
+        // Não alterar google_maps_api.xml, e sim AndroidManifest.xml
+        // Chave está em local.properties
+        // Mostra chave google maps...
+        val apiKey = BuildConfig.GMP_KEY
+        if (apiKey.isNullOrEmpty())
+            Toast.makeText(this, "Chave google maps vazia", Toast.LENGTH_SHORT).show()
+
         val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         val locationProvider = LocationManager.GPS_PROVIDER
@@ -87,12 +97,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             return
         }
 
-//        val ultimaLocalizacao = locationManager.getLastKnownLocation(locationProvider)
-        val ultimaLocalizacao = locationManager.getLastKnownLocation(locationProvider)
+        // Needs phone set to allow Google Position for GPS
+        //val ultimaLocalizacao = locationManager.getLastKnownLocation(locationProvider)
 
-        Toast.makeText(this, ultimaLocalizacao.toString(), Toast.LENGTH_LONG).show()
+        // Lista de provedores GPS
+        val providers: List<String> = locationManager.getProviders(true)
+        var ultimaLocalizacao: Location? = null
+        for (provider in providers) {
+            val l: Location = locationManager.getLastKnownLocation(provider) ?: continue
+            if (ultimaLocalizacao == null || l.getAccuracy() < ultimaLocalizacao.getAccuracy()) {
+            // Found best last known location: %s", l);
+                ultimaLocalizacao = l
+            }
+        }
 
         ultimaLocalizacao?.let {
+
+            Toast.makeText(this, it.toString(), Toast.LENGTH_SHORT).show()
+
             val latLng = LatLng(it.latitude, it.longitude)
 
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16.25f))
@@ -105,6 +127,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     .strokeWidth(3f)
                     .fillColor(Color.parseColor("#537CDBE7"))
             )
+        } ?: run {
+            Toast.makeText(this, "Última localização conhecida não encontrada", Toast.LENGTH_SHORT).show()
         }
     }
 
